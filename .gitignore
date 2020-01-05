@@ -1,0 +1,7 @@
+*.o
+
+gtags
+*.a
+lua
+luac
+tags
