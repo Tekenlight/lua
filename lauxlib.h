@@ -15,6 +15,17 @@
 #include "lua.h"
 
 
+/* 05-Jan-2020 Inroduced to influence the way a .lua file is loaded by lua. */
+typedef int (*luaL_loaderfunc) (lua_State *L, const char *name, const char *mode);
+typedef int (*luaL_cachingfunc) (lua_State *L, const char *name);
+typedef int (*luaL_cachedfileexistsfunc) (lua_State *L, const char *name);
+typedef const char * (*luaL_cachedpathfunc) (lua_State *L, const char *name);
+typedef int (*luaL_addtocachedpathfunc) (lua_State *L, const char *name, const char * pathname);
+#define LUA_CACHED_FILE_LOADER_FUNCTION "___FILE_LOADER_FUNCTION___"
+#define LUA_FILE_CACHING_FUNCTION "___FILE_CACHING_FUNCTION___"
+#define LUA_CACHED_FILE_EXISTS_FUNCTION "___CACHED_FILE_EXISTS_FUNCTION___"
+#define LUA_CACHED_PATH_FUNCTION "___CACHED_PATH_FUNCTION___"
+#define LUA_ADDTO_CACHED_PATH_FUNCTION "___ADDTO_CACHED_PATH_FUNCTION___"
 
 /* extra error code for 'luaL_loadfilex' */
 #define LUA_ERRFILE     (LUA_ERRERR+1)

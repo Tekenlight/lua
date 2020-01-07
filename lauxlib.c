@@ -700,7 +700,7 @@ static int skipcomment (LoadF *lf, int *cp) {
 }
 
 
-LUALIB_API int luaL_loadfilex (lua_State *L, const char *filename,
+static int low_luaL_loadfilex (lua_State *L, const char *filename,
                                              const char *mode) {
   LoadF lf;
   int status, readstatus;
@@ -735,6 +735,28 @@ LUALIB_API int luaL_loadfilex (lua_State *L, const char *filename,
   return status;
 }
 
+LUALIB_API int luaL_loadfilex (lua_State *L, const char *filename, const char *mode) {
+  int status = LUA_OK;
+  luaL_cachedfileexistsfunc func = NULL;
+  lua_getglobal(L, LUA_CACHED_FILE_EXISTS_FUNCTION);
+  func = (luaL_cachedfileexistsfunc)lua_touserdata(L, -1);
+  lua_pop(L, 1);
+  if (func && func(L, filename)) {
+    lua_getglobal(L, LUA_CACHED_FILE_LOADER_FUNCTION);
+    luaL_loaderfunc loader_func = (luaL_loaderfunc)lua_touserdata(L, -1);
+	lua_pop(L, 1);
+	if (loader_func) status = loader_func(L, filename, mode);
+	else status = low_luaL_loadfilex(L, filename, mode);
+  }
+  else {
+    status = low_luaL_loadfilex(L, filename, mode);
+  }
+  lua_getglobal(L, LUA_FILE_CACHING_FUNCTION);
+  luaL_cachingfunc caching_func = (luaL_cachingfunc)lua_touserdata(L, -1);
+  lua_pop(L, 1);
+  if (caching_func) caching_func(L, filename);
+  return status;
+}
 
 typedef struct LoadS {
   const char *s;

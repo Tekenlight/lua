@@ -438,12 +438,21 @@ static const char *searchpath (lua_State *L, const char *name,
                                              const char *dirsep) {
   luaL_Buffer msg;  /* to build error message */
   luaL_buffinit(L, &msg);
+  luaL_cachedfileexistsfunc func = NULL;
   if (*sep != '\0')  /* non-empty separator? */
     name = luaL_gsub(L, name, sep, dirsep);  /* replace it by 'dirsep' */
   while ((path = pushnexttemplate(L, path)) != NULL) {
     const char *filename = luaL_gsub(L, lua_tostring(L, -1),
                                      LUA_PATH_MARK, name);
     lua_remove(L, -2);  /* remove path template */
+	/* 05-jan-2020: Enhancement done to check if the file exists in an external cacke
+	 * if so, it will get loaded from there.
+	 * */
+	lua_getglobal(L, LUA_CACHED_FILE_EXISTS_FUNCTION);
+	func = (luaL_cachedfileexistsfunc)lua_touserdata(L, -1);
+	lua_pop(L, 1);
+	if (func && func(L, filename))
+		return filename;
     if (readable(filename))  /* does file exist and is readable? */
       return filename;  /* return that file name */
     lua_pushfstring(L, "\n\tno file '%s'", filename);
@@ -495,7 +504,27 @@ static int checkload (lua_State *L, int stat, const char *filename) {
 static int searcher_Lua (lua_State *L) {
   const char *filename;
   const char *name = luaL_checkstring(L, 1);
-  filename = findfile(L, name, "path", LUA_LSUBSEP);
+  luaL_cachedpathfunc func = NULL;
+  luaL_addtocachedpathfunc add_func = NULL;
+
+  filename = NULL;
+  lua_getglobal(L, LUA_CACHED_PATH_FUNCTION);
+  func = (luaL_cachedpathfunc)lua_touserdata(L, -1);
+  lua_pop(L, 1);
+  if (func) {
+    filename = func(L, name);
+  }
+  if (!filename) {
+    filename = findfile(L, name, "path", LUA_LSUBSEP);
+	if (filename != NULL) {
+      lua_getglobal(L, LUA_ADDTO_CACHED_PATH_FUNCTION);
+	  add_func = (luaL_addtocachedpathfunc)lua_touserdata(L, -1);
+	  lua_pop(L, 1);
+	  if (add_func) {
+	    add_func(L, name, filename);
+	  }
+	}
+  }
   if (filename == NULL) return 1;  /* module not found in this path */
   return checkload(L, (luaL_loadfile(L, filename) == LUA_OK), filename);
 }
