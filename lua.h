@@ -11,6 +11,15 @@
 
 #include <stdarg.h>
 #include <stddef.h>
+#include <execinfo.h>
+
+#ifndef LUA_STACK_TRACE
+#define LUA_STACK_TRACE() {\
+	void* callstack[128]; \
+	int frames = backtrace(callstack, 128); \
+	backtrace_symbols_fd(callstack, frames, 2); \
+}
+#endif
 
 
 #include "luaconf.h"
